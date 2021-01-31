@@ -1,6 +1,6 @@
 from datetime import datetime
-
 from app import db
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
 
 
 helper_table = db.Table('help',
@@ -16,13 +16,23 @@ class Book(db.Model):
     pages = db.Column(db.Integer)
     authors = db.relationship('Author', secondary=helper_table,
                               backref=db.backref('books', lazy='dynamic'), lazy='dynamic')
-    if_lend = db.relationship('Lend', backref='books', lazy='dynamic')
+    if_lend = db.relationship('Lend', backref='book', lazy='dynamic')
 
     def __str__(self):
         return f"<Book {self.title}>"
 
     def __repr__(self):
-        return f"<Book {self.title}>"
+        return str(self)
+
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "pages": self.pages,
+            "authors": [a.surname for a in self.authors],
+            "if_lend": [l.lend_date for l in self.if_lend]
+        }
 
 
 class Author(db.Model):
@@ -34,7 +44,15 @@ class Author(db.Model):
         return f"<Author {self.name} {self.surname}>"
 
     def __repr__(self):
-        return f"<Author {self.name} {self.surname}>"
+        return str(self)
+
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "surname": self.surname,
+            "books": [b.title for b in self.books]
+        }
 
 
 class Lend(db.Model):
@@ -46,4 +64,18 @@ class Lend(db.Model):
         return f"<Date and time of lend: {self.lend_date}>"
 
     def __repr__(self):
-        return f"<Date and time of lend: {self.lend_date}>"
+        return str(self)
+
+
+class BookSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Book
+        include_relationships = True
+        load_instance = True
+
+
+class AuthorSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Author
+        include_relationships = True
+        load_instance = True
